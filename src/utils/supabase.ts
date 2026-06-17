@@ -38,91 +38,7 @@ export interface Prediction {
   points_awarded: number | null;
 }
 
-// Seed matches
-const SEED_MATCHES: Match[] = [
-  {
-    id: "match-1",
-    home_team: "Argentina",
-    away_team: "Saudi Arabia",
-    home_score: 1,
-    away_score: 2,
-    kickoff: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    status: "completed",
-    group_stage: "Group C"
-  },
-  {
-    id: "match-2",
-    home_team: "France",
-    away_team: "Australia",
-    home_score: 4,
-    away_score: 1,
-    kickoff: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    status: "completed",
-    group_stage: "Group D"
-  },
-  {
-    id: "match-3",
-    home_team: "Germany",
-    away_team: "Japan",
-    home_score: 1,
-    away_score: 2,
-    kickoff: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
-    status: "completed",
-    group_stage: "Group E"
-  },
-  {
-    id: "match-4",
-    home_team: "Spain",
-    away_team: "Costa Rica",
-    home_score: 3,
-    away_score: 0,
-    kickoff: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // Live: started 15 mins ago
-    status: "live",
-    group_stage: "Group E"
-  },
-  {
-    id: "match-5",
-    home_team: "Brazil",
-    away_team: "Serbia",
-    home_score: null,
-    away_score: null,
-    kickoff: new Date(Date.now() + 45 * 60 * 1000).toISOString(), // Upcoming: starts in 45 mins (LOCKED soon)
-    status: "scheduled",
-    group_stage: "Group G"
-  },
-  {
-    id: "match-6",
-    home_team: "Portugal",
-    away_team: "Ghana",
-    home_score: null,
-    away_score: null,
-    kickoff: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // Upcoming: starts in 2 hours
-    status: "scheduled",
-    group_stage: "Group H"
-  },
-  {
-    id: "match-7",
-    home_team: "England",
-    away_team: "USA",
-    home_score: null,
-    away_score: null,
-    kickoff: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(), // Tomorrow
-    status: "scheduled",
-    group_stage: "Group B"
-  },
-  {
-    id: "match-8",
-    home_team: "Poland",
-    away_team: "Mexico",
-    home_score: null,
-    away_score: null,
-    kickoff: new Date(Date.now() + 28 * 60 * 60 * 1000).toISOString(), // Tomorrow
-    status: "scheduled",
-    group_stage: "Group C"
-  }
-];
-
-// Seed profiles
+// Fallback seed profiles
 const SEED_PROFILES: Profile[] = [
   { id: "prof-admin", username: "Nathan (Admin)", pin: "1234", is_admin: true },
   { id: "prof-user1", username: "Alex", pin: "1111", is_admin: false },
@@ -130,17 +46,43 @@ const SEED_PROFILES: Profile[] = [
   { id: "prof-user3", username: "Taylor", pin: "3333", is_admin: false }
 ];
 
-// Seed predictions
+// Fallback seed predictions
 const SEED_PREDICTIONS: Prediction[] = [
-  // Alex predictions
-  { id: "pred-1", profile_id: "prof-user1", match_id: "match-1", home_prediction: 2, away_prediction: 1, points_awarded: 0 }, // Wrong winner
-  { id: "pred-2", profile_id: "prof-user1", match_id: "match-2", home_prediction: 3, away_prediction: 1, points_awarded: 2 }, // Correct winner + goal difference (diff +2)
-  { id: "pred-3", profile_id: "prof-user1", match_id: "match-3", home_prediction: 1, away_prediction: 2, points_awarded: 3 }, // Exact match
-  
-  // Jordan predictions
-  { id: "pred-4", profile_id: "prof-user2", match_id: "match-1", home_prediction: 1, away_prediction: 2, points_awarded: 3 }, // Exact match
-  { id: "pred-5", profile_id: "prof-user2", match_id: "match-2", home_prediction: 2, away_prediction: 1, points_awarded: 1 }, // Correct winner, wrong diff
-  { id: "pred-6", profile_id: "prof-user2", match_id: "match-3", home_prediction: 2, away_prediction: 0, points_awarded: 0 }  // Wrong winner
+  { id: "pred-1", profile_id: "prof-user1", match_id: "match-2026-1", home_prediction: 1, away_prediction: 1, points_awarded: null }
+];
+
+// Seed matches backup (in case the network fetch is offline)
+const BACKUP_SEED_MATCHES: Match[] = [
+  {
+    id: "match-2026-1",
+    home_team: "Mexico",
+    away_team: "South Africa",
+    home_score: null,
+    away_score: null,
+    kickoff: "2026-06-11T19:00:00Z",
+    status: "scheduled",
+    group_stage: "Group A"
+  },
+  {
+    id: "match-2026-2",
+    home_team: "Canada",
+    away_team: "Bosnia and Herzegovina",
+    home_score: null,
+    away_score: null,
+    kickoff: "2026-06-12T19:00:00Z",
+    status: "scheduled",
+    group_stage: "Group B"
+  },
+  {
+    id: "match-2026-3",
+    home_team: "United States",
+    away_team: "Paraguay",
+    home_score: null,
+    away_score: null,
+    kickoff: "2026-06-13T01:00:00Z",
+    status: "scheduled",
+    group_stage: "Group D"
+  }
 ];
 
 const getLocalStorage = <T>(key: string, defaultValue: T): T => {
@@ -154,8 +96,41 @@ const setLocalStorage = <T>(key: string, value: T): void => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
+// Auto fetch World Cup 2026 matches list from public fixtures JSON API
+const fetchAndSeedMatches = async (): Promise<Match[]> => {
+  try {
+    const res = await fetch("https://thestatsapi.com/world-cup/data/fixtures.json");
+    if (!res.ok) throw new Error("Failed to load schedule from Open API");
+    const data = await res.json();
+    if (data && Array.isArray(data.fixtures)) {
+      // Filter for group-stage matches of World Cup 2026
+      const groupFixtures = data.fixtures.filter(
+        (f: any) => f.stage === "group-stage" || f.stage === "group"
+      );
+
+      const mappedMatches: Match[] = groupFixtures.map((f: any) => ({
+        id: `match-2026-${f.matchNumber}`,
+        home_team: f.homeTeam,
+        away_team: f.awayTeam,
+        home_score: null,
+        away_score: null,
+        kickoff: f.kickoffUtc,
+        status: "scheduled",
+        group_stage: f.group ? `Group ${f.group}` : "Group Stage"
+      }));
+
+      if (mappedMatches.length > 0) {
+        setLocalStorage("wc_matches", mappedMatches);
+        return mappedMatches;
+      }
+    }
+  } catch (error) {
+    console.error("Auto fetch fixtures failed, using backup seed schedule.", error);
+  }
+  return BACKUP_SEED_MATCHES;
+};
+
 export const db = {
-  // Check if we are using localStorage
   isFallback: () => !isRealSupabase,
 
   // Get Profiles
@@ -197,21 +172,77 @@ export const db = {
     return newProfile;
   },
 
-  // Get Matches
+  // Update Profile
+  updateProfile: async (profile: Profile): Promise<Profile> => {
+    if (isRealSupabase) {
+      try {
+        const { data, error } = await supabase.from("profiles").upsert([profile]).select();
+        if (error) throw error;
+        return data[0] as Profile;
+      } catch (e) {
+        console.error("Supabase update profile failed", e);
+      }
+    }
+
+    const profiles = getLocalStorage("wc_profiles", SEED_PROFILES);
+    const index = profiles.findIndex((p) => p.id === profile.id);
+    if (index > -1) {
+      profiles[index] = profile;
+    }
+    setLocalStorage("wc_profiles", profiles);
+    return profile;
+  },
+
+  // Delete Profile
+  deleteProfile: async (id: string): Promise<boolean> => {
+    if (isRealSupabase) {
+      try {
+        const { error } = await supabase.from("profiles").delete().eq("id", id);
+        if (error) throw error;
+        return true;
+      } catch (e) {
+        console.error("Supabase delete profile failed", e);
+      }
+    }
+
+    const profiles = getLocalStorage("wc_profiles", SEED_PROFILES);
+    const updated = profiles.filter((p) => p.id !== id);
+    setLocalStorage("wc_profiles", updated);
+    
+    // Clean up predictions
+    const predictions = getLocalStorage("wc_predictions", SEED_PREDICTIONS);
+    const updatedPreds = predictions.filter((p) => p.profile_id !== id);
+    setLocalStorage("wc_predictions", updatedPreds);
+
+    return true;
+  },
+
+  // Get Matches (Loads from StatsAPI if local matches are empty)
   getMatches: async (): Promise<Match[]> => {
     if (isRealSupabase) {
       try {
         const { data, error } = await supabase.from("matches").select("*").order("kickoff", { ascending: true });
         if (error) throw error;
-        return data as Match[];
+        if (data && data.length > 0) {
+          return data as Match[];
+        }
       } catch (e) {
         console.error("Supabase failed, falling back to localStorage", e);
       }
     }
-    return getLocalStorage("wc_matches", SEED_MATCHES);
+
+    // Local Storage check
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("wc_matches");
+      if (!stored) {
+        const seeded = await fetchAndSeedMatches();
+        return seeded;
+      }
+    }
+    return getLocalStorage("wc_matches", BACKUP_SEED_MATCHES);
   },
 
-  // Save/Update Match (Admin)
+  // Save/Update Match
   saveMatch: async (match: Match): Promise<Match> => {
     if (isRealSupabase) {
       try {
@@ -223,7 +254,7 @@ export const db = {
       }
     }
 
-    const matches = getLocalStorage("wc_matches", SEED_MATCHES);
+    const matches = getLocalStorage("wc_matches", BACKUP_SEED_MATCHES);
     const index = matches.findIndex((m) => m.id === match.id);
     if (index > -1) {
       matches[index] = match;
@@ -257,7 +288,7 @@ export const db = {
       }
     }
 
-    const matches = getLocalStorage("wc_matches", SEED_MATCHES);
+    const matches = getLocalStorage("wc_matches", BACKUP_SEED_MATCHES);
     matches.push(newMatch);
     setLocalStorage("wc_matches", matches);
     return newMatch;
@@ -322,7 +353,7 @@ export const db = {
     return newPrediction;
   },
 
-  // Recalculate all points for predictions based on current match scores (Admin)
+  // Recalculate points
   recalculatePoints: async (matchesList: Match[]): Promise<Prediction[]> => {
     const predictions = getLocalStorage("wc_predictions", SEED_PREDICTIONS);
 
@@ -332,13 +363,11 @@ export const db = {
         return { ...pred, points_awarded: null };
       }
 
-      // Compute points based on the rules:
       const homePred = pred.home_prediction;
       const awayPred = pred.away_prediction;
       const homeAct = match.home_score;
       const awayAct = match.away_score;
 
-      // Rule 1: Exact Score -> 3 points
       if (homePred === homeAct && awayPred === awayAct) {
         return { ...pred, points_awarded: 3 };
       }
@@ -349,23 +378,19 @@ export const db = {
       const predWinner = Math.sign(predDiff);
       const actWinner = Math.sign(actDiff);
 
-      // Rule 4: Incorrect Outcome -> 0 points
       if (predWinner !== actWinner) {
         return { ...pred, points_awarded: 0 };
       }
 
-      // Rule 2: Correct Outcome + Correct Goal Difference -> 2 points
       if (predDiff === actDiff) {
         return { ...pred, points_awarded: 2 };
       }
 
-      // Rule 3: Correct Outcome + Wrong Goal Difference -> 1 point
       return { ...pred, points_awarded: 1 };
     });
 
     if (isRealSupabase) {
       try {
-        // Upsert all updated predictions
         const { error } = await supabase.from("predictions").upsert(
           updatedPredictions.map((up) => ({
             id: up.id,
